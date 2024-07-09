@@ -4,11 +4,11 @@ const cloudinary = require("cloudinary");
 connectDatabase();
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: "dkcyuohau",
+  api_key: "614852153793615",
+  api_secret: "dhlO1YnJnKABnldIn-WmSPj3A7E",
 });
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server is running on port ${process.env.PORT}`);
+app.listen(4001, () => {
+  console.log(`Server is running on port ${4001}`);
 });

@@ -126,14 +126,16 @@ export const logoutUser = () => async (dispatch) => {
   }
 };
 
-export const registerUser =
-  (name, email, password, avatar) => async (dispatch) => {
-    try {
-      dispatch({
-        type: "RegisterRequest",
-      });
+export const registerUser = (name, email, password, avatar) => async (dispatch) => {
+  try {
+    dispatch({
+      type: "RegisterRequest",
+    });
 
-      const { data } = await axios.post(
+    let data;
+
+    try {
+      const response = await axios.post(
         "/api/v1/register",
         { name, email, password, avatar },
         {
@@ -143,18 +145,39 @@ export const registerUser =
         }
       );
 
-      dispatch({
-        type: "RegisterSuccess",
-        payload: data.user,
-      });
+      // Debugging log
+      console.log('Response:', response);
+
+      if (response && response.data) {
+        data = response.data;
+        console.log('Data:', data.user); // Log the data for further verification
+
+        // Proceed with further processing using data
+        // ...
+      } else {
+        throw new Error('No data found in the response');
+      }
     } catch (error) {
+      console.error('Error during registration:', error.message);
+      // Handle error appropriately
       dispatch({
         type: "RegisterFailure",
-        payload: error.response.data.message,
+        payload: error.message,
       });
+      return; // Exit the function after dispatching failure action
     }
-  };
 
+    dispatch({
+      type: "RegisterSuccess",
+      payload: data.user,
+    });
+  } catch (error) {
+    dispatch({
+      type: "RegisterFailure",
+      payload: error.response ? error.response.data.message : error.message,
+    });
+  }
+};
 export const updateProfile = (name, email, avatar) => async (dispatch) => {
   try {
     dispatch({

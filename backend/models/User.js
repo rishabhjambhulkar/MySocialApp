@@ -26,6 +26,18 @@ const userSchema = new mongoose.Schema({
     select: false,
   },
 
+  freeDemoCode: { 
+    code: { type: String, unique: true },
+    used: { type: Boolean, default: false }
+  },
+
+  referralCode: { 
+      code: { type: String, unique: true },
+      used: { type: Boolean, default: false }
+  },
+  
+  referredBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
   posts: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -46,6 +58,8 @@ const userSchema = new mongoose.Schema({
     },
   ],
 
+
+
   resetPasswordToken: String,
   resetPasswordExpire: Date,
 });
@@ -63,8 +77,20 @@ userSchema.methods.matchPassword = async function (password) {
 };
 
 userSchema.methods.generateToken = function () {
+  // console.log('User ID:', this._id); 
+  // console.log('JWT Secret:', process.env.JWT_SECRET); 
+
+  if (!this._id) {
+    throw new Error('User ID is not defined');
+  }
+
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT Secret is not defined');
+  }
+
   return jwt.sign({ _id: this._id }, process.env.JWT_SECRET);
 };
+
 
 userSchema.methods.getResetPasswordToken = function () {
   const resetToken = crypto.randomBytes(20).toString("hex");

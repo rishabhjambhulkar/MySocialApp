@@ -1,13 +1,129 @@
 const User = require("../models/User");
 const Post = require("../models/Post");
+const Coupon = require("../models/Coupon");
+
 const { sendEmail } = require("../middlewares/sendEmail");
 const crypto = require("crypto");
 const cloudinary = require("cloudinary");
 
+const { generateUniqueCode } = require('../middlewares/Coupon');
+
+exports.getCouponsForUser = async function(req, res) {
+  try {
+      const userId = req.user.id;
+      const coupons = await Coupon.find({ userId: userId });
+
+      res.status(200).json(coupons);
+  } catch (error) {
+      console.error('Error fetching coupons:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+async function generateCoupon(userId, type) {
+  const code = generateUniqueCode();
+  const coupon = new Coupon({
+      code: code,
+      type: type,
+      userId: userId
+  });
+  await coupon.save();
+  return code;
+}
+
+
+exports.applyReferral = async function(req, res) {
+
+  console.log("apply referral is working");
+  
+
+  // Log the entire request body for debugging
+  console.log("Request Body:", req.user);
+
+  const { referralCode } = req.body;
+  console.log("Referral Code:", referralCode);
+
+
+
+  try {
+    const user = await User.findOne({ _id: req.user._id });
+
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if the user has already used a referral code
+    if (user.referralCode.used) {
+        return res.status(400).json({ error: 'Referral code has already been used' });
+    }
+
+    const referrer = await User.findOne({ 'referralCode.code': referralCode });
+    if (!referrer) {
+        return res.status(400).json({ error: 'Invalid referral code' });
+    }
+
+    // Check if the user is already referred by this referrer
+    if (referrer.referredBy.includes(user._id)) {
+        return res.status(400).json({ error: 'Referral is already used' });
+    }
+
+    // Add user to referrer's referredBy array if not already present
+    referrer.referredBy.push(user._id);
+    
+    // Mark the user's referral code as used
+    user.referralCode.used = true;
+
+    // Save the referrer and user documents
+    await referrer.save();
+    await user.save();
+      console.log("referrer", referrer._id)
+      console.log("user", user._id)
+
+      const referrerDiscountCode = await generateCoupon(referrer._id, 'discount');
+      const newUserDiscountCode = await generateCoupon(user._id, 'discount');
+
+     
+
+      res.status(200).json({
+          message: 'Referral applied successfully',
+          referrerDiscountCode: referrerDiscountCode,
+          newUserDiscountCode: newUserDiscountCode
+      });
+  } 
+  catch (error) {
+      console.error('Error during referral application:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
+
+
+
+
+
+
+
+
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, avatar } = req.body;
+    const { name, email, password , avatar } = req.body;
 
+    const freeDemoCode = {
+      code: generateUniqueCode(),
+      used: false
+    };
+    const newReferralCode = {
+        code: generateUniqueCode(),
+        used: false
+    };
+    referredBy = [];
+
+
+    console.log( {"freeDemoCode": freeDemoCode,
+      "referralCode": newReferralCode,
+      "referredBy": referredBy
+    });
+   
     let user = await User.findOne({ email });
     if (user) {
       return res
@@ -24,6 +140,11 @@ exports.register = async (req, res) => {
       email,
       password,
       avatar: { public_id: myCloud.public_id, url: myCloud.secure_url },
+      freeDemoCode: freeDemoCode,
+      referralCode: newReferralCode,
+      referredBy: referredBy,
+     
+       
     });
 
     const token = await user.generateToken();
